@@ -688,8 +688,7 @@ class GlycogenStructure:
         in glycogen granule : volume of glycogen granule """
 
         # v = 1.33*0.24
-        v = 1.33 * GlycogenStructure.L  # TODO: Why 1.33 and not 4/3? 
-
+        v = 1.33 * GlycogenStructure.L  # TODO: Why 1.33 and not 4/3?
 
         granule_radius = self.get_radius(unit='nm')
         v_granule = get_volume_of_sphere(radius=granule_radius)
@@ -697,14 +696,16 @@ class GlycogenStructure:
         # return self.number_of_glucose_fixed()*v/(4/3*math.pi*r_g**3)
         return self.get_num_glucose_fixed()*v / v_granule
 
-    def get_radius(self, unit: str) -> float:
+    def get_radius(self, unit: str = 'nm') -> float:
         """ TODO: Documentation.
         unit can be 'adim' or 'nm'.
         """
         if unit == 'adim':
             alpha = 1.0  # ?
-        else:
+        elif unit == 'nm':
             alpha = 0.24  # GlycogenStructure.L ?
+        else:
+            raise Exception("Unit can only be 'nm' (default)  or 'adim'. ")
 
         pos_x, pos_y, pos_z = self.get_glucose_positions_by_dimension()
 
@@ -714,10 +715,14 @@ class GlycogenStructure:
         length = len(pos_x)
 
         r2 = 1.0/length*sum((pos_x-mean_x)**2
-                           + (pos_y-mean_y)**2
-                           + (pos_z-mean_z)**2)
+                            + (pos_y-mean_y)**2
+                            + (pos_z-mean_z)**2)
 
         return alpha*r2**0.5
+
+    def get_avg_degree_of_polymerisation(self):
+        dplist = [chain.get_num_glucose_positions() for chain in self.chains]
+        return np.mean(dplist)
 
     def get_glucose_positions_by_dimension(self) -> tuple[list[float]]:
         """ Return glucose positions of all chains for each dimension (x,y,z) . """

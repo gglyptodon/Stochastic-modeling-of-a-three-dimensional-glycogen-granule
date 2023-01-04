@@ -51,6 +51,9 @@ class TestMiscMethods(TestCase):
     PREMADE_G_7_CHAINS = Path(f"{SCRIPTDIR}/testdata/test_7chains.json")
     PREMADE_TAB1 = Path(
         f"{SCRIPTDIR}/testdata/g_N2000_gamma_0.2_1.0_exported_tab1_seed123.json")
+    PREMADE_FIG5 = Path(
+        f"{SCRIPTDIR}/testdata/g_N1000_gamma_0.2_1.0_exported_fig5_seed123.json")
+
 
     def test_ab_ratio_zero(self):
         g = GlycogenStructure.from_json_file(
@@ -139,3 +142,18 @@ class TestMiscMethods(TestCase):
         expected = 8.016721661194044
         self.assertAlmostEqual(result, expected)
 
+    def test_radius_fig5(self):
+        g = GlycogenStructure.from_json_file(
+            TestMiscMethods.PREMADE_FIG5, no_init=True)
+        print(g)
+        result = g.get_radius(unit='nm')
+        expected = 7.0364134674295045
+        self.assertAlmostEqual(result, expected)
+
+    def test_degree_of_polymerisation(self):
+        g = GlycogenStructure.from_json_file(
+            TestMiscMethods.PREMADE_FIG5, no_init=True)
+        print(g)
+        result = g.get_avg_degree_of_polymerisation()
+        expected = 8.0
+        self.assertAlmostEqual(result, expected)
