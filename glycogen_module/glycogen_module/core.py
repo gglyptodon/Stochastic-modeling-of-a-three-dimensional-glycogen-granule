@@ -9,7 +9,7 @@ from pathlib import Path
 import random
 import sys
 
-from glycogen_module.utils import angle3Dchain, get_volume_of_sphere
+from glycogen_module.utils import angle3Dchain, get_volume_of_sphere, distance_between_points, distance_multiple_sets
 import numpy as np
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class Chain:
     mother_id: int
     daughters_ids: list[int]
     daughters_positions: list[int]
-    glucose_positions: list[int]
+    glucose_positions: list[float]
 
     def get_num_glucose_positions(self):
         return len(self.glucose_positions)
@@ -627,6 +627,12 @@ class GlycogenStructure:
             with open(Path(filename), 'w') as f:
                 json.dump(result_dct, f, indent=2)
 
+    def serialize_to_json(self):
+        params_dct = self.get_parameters_as_dct()
+        chains_dct = self.get_chains_as_dct()
+        result_dct = params_dct | chains_dct  # merge
+        return json.dumps(result_dct, indent=2)
+
     def show_enzymes(self):
         header = f"{'Glycogen Branching Enzyme (GBE)':^30} {'Glycogen Synthase (GS)':^30} {'Glycogen Debranching Enzyme (GDE)':^30} {'Glycogen Phosphorylase (GP)':^30}"
         res = f"{header}\n{self.gbe:^30} {self.gs:^30} {self.gde:^30} {self.gp:^30}"
@@ -710,7 +716,7 @@ class GlycogenStructure:
         pos_x, pos_y, pos_z = self.get_glucose_positions_by_dimension()
 
         # mean values for each dimension
-        mean_x, mean_y, mean_z = [np.mean(p) for p in (pos_x, pos_y, pos_z)]
+        mean_x, mean_y, mean_z = self.get_mean_by_dimension()
 
         length = len(pos_x)
 
@@ -720,9 +726,35 @@ class GlycogenStructure:
 
         return alpha*r2**0.5
 
+    def get_mean_by_dimension(self) -> tuple[float]:
+        pos_x, pos_y, pos_z = self.get_glucose_positions_by_dimension()
+        mean_x, mean_y, mean_z = [np.mean(p) for p in (pos_x, pos_y, pos_z)]
+        return (mean_x, mean_y, mean_z)
+
     def get_avg_degree_of_polymerisation(self):
         dplist = [chain.get_num_glucose_positions() for chain in self.chains]
         return np.mean(dplist)
+
+    def get_density_profile(self, r_sample=np.linspace(1, 100, 50), delta_r=5):
+        """TODO: documentation. r_sample ? delta_r ?"""
+        occupancy_list = []
+        for r in r_sample:
+            N_ext = self.get_number_of_units_within_radius(r+delta_r)
+            N_in = self.get_number_of_units_within_radius(r)
+            Volume_layer_in_nm3 = (
+                4.0/3) * math.pi * (r*0.24 + delta_r*0.24)**3 - (4.0/3) * math.pi * (r*0.24)**3
+            occupancy = (1.33*0.24)*(N_ext-N_in)/Volume_layer_in_nm3
+
+            occupancy_list.append(occupancy)
+        return occupancy_list
+
+    def get_number_of_units_within_radius(self, radius=10):
+        """return number of glucose units within given radius """
+        (xm, ym, zm) = self.get_mean_by_dimension()
+        (x, y, z) = self.get_glucose_positions_by_dimension()
+        dists = distance_multiple_sets(x, y, z, [xm], [ym], [zm])
+
+        return len([d for d in dists if d < radius])
 
     def get_glucose_positions_by_dimension(self) -> tuple[list[float]]:
         """ Return glucose positions of all chains for each dimension (x,y,z) . """
